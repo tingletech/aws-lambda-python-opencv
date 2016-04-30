@@ -1,13 +1,38 @@
 #!/bin/bash
 
+if [[ -n "$DEBUG" ]]; then 
+  set -x
+fi
+
+set -o pipefail  # trace ERR through pipes
+set -o errtrace  # trace ERR through 'time command' and other functions
+set -o nounset   ## set -u : exit the script if you try to use an uninitialised variable
+set -o errexit   ## set -e : exit the script if any statement returns a non-true return value
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )" # http://stackoverflow.com/questions/59895
+cd $DIR
+
+if [[ ! -e ve27 ]]
+  then
+    virtualenv --python python2.7 ve27
+fi
+
+set +u
+. ve27/bin/activate
+set -u
+
+rm -rf build lambda-package
+
 # Setting up build env
-sudo yum update -y
-sudo yum install -y git cmake gcc-c++ gcc python-devel chrpath
+# sudo yum update -y
+# sudo yum install -y git cmake gcc-c++ gcc python-devel chrpath
 mkdir lambda-package lambda-package/cv2 build build/numpy
 
 # Build numpy
 pip install --install-option="--prefix=$PWD/build/numpy" numpy
 cp -rf build/numpy/lib64/python2.7/site-packages/numpy lambda-package
+
+export PYTHONPATH=$DIR/lambda-package/
 
 # Build OpenCV 3.1
 (
@@ -29,6 +54,7 @@ cp -rf build/numpy/lib64/python2.7/site-packages/numpy lambda-package
 		-D ENABLE_FAST_MATH=ON			\
 		-D BUILD_EXAMPLES=OFF			\
 		-D PYTHON2_NUMPY_INCLUDE_DIRS="$NUMPY"	\
+                -D BUILD_opencv_java=OFF               \
 		.
 	make
 )
